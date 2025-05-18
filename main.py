@@ -3,7 +3,6 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
-from openai import OpenAI
 
 app = FastAPI()
 
@@ -17,14 +16,35 @@ app.add_middleware(
 )
 
 OCR_API_KEY = os.getenv("OCR_API_KEY")
-GPT_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Nuevo cliente de OpenAI (versión 1.0 en adelante)
-client = OpenAI(api_key=GPT_API_KEY)
+HUGGINGFACE_API_KEY = "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"
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B"
+
+def analizar_con_gptneo(texto):
+    prompt = f"Analiza esta respuesta de estudiante: '{texto}'. Evalúa si es correcta, qué habilidades demuestra, errores y sugiere retroalimentación pedagógica. Devuelve el análisis completo en español."
+
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "temperature": 0.7,
+            "max_new_tokens": 200
+        }
+    }
+
+    response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
+    resultado = response.json()
+    if isinstance(resultado, list):
+        return resultado[0]["generated_text"]
+    else:
+        return resultado
 
 @app.post("/evaluar")
 async def evaluar(file: UploadFile = File(...)):
-    # OCR: enviar imagen a OCR.Space
     ocr_response = requests.post(
         "https://api.ocr.space/parse/image",
         data={"apikey": OCR_API_KEY, "language": "spa"},
@@ -37,21 +57,9 @@ async def evaluar(file: UploadFile = File(...)):
     except Exception:
         return {"error": "No se pudo leer texto desde la imagen."}
 
-    # Prompt para GPT
-    prompt = f"""
-    Analiza esta respuesta escrita por un estudiante. Indica si es correcta, qué habilidades demuestra, qué errores tiene (si hay), y sugiere una retroalimentación pedagógica. Respuesta del estudiante:
-    "{texto_extraido}"
-    Devuelve el resultado en JSON con los siguientes campos: correcto (sí/no), habilidades, errores, retroalimentación y puntaje (de 1 a 7).
-    """
-
-    # Usando el nuevo cliente OpenAI
-    gpt_response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
-    )
+    analisis = analizar_con_gptneo(texto_extraido)
 
     return {
         "texto_extraido": texto_extraido,
-        "analisis_gpt": gpt_response.choices[0].message.content
+        "analisis_gpt": analisis
     }
