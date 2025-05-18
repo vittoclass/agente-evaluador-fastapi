@@ -18,9 +18,9 @@ app.add_middleware(
 OCR_API_KEY = os.getenv("OCR_API_KEY")
 
 HUGGINGFACE_API_KEY = "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"
-HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B"
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
 
-def analizar_con_gptneo(texto):
+def analizar_con_mistral(texto):
     prompt = f"Analiza esta respuesta de estudiante: '{texto}'. Evalúa si es correcta, qué habilidades demuestra, errores y sugiere retroalimentación pedagógica. Devuelve el análisis completo en español."
 
     headers = {
@@ -45,6 +45,8 @@ def analizar_con_gptneo(texto):
             return resultado[0]["generated_text"]
         elif "generated_text" in resultado:
             return resultado["generated_text"]
+        elif "error" in resultado:
+            return "Error: " + resultado["error"]
         else:
             return str(resultado)
     except Exception as e:
@@ -63,7 +65,7 @@ async def evaluar(file: UploadFile = File(...)):
     except Exception:
         return {"error": "❌ No se pudo leer texto desde la imagen."}
 
-    analisis = analizar_con_gptneo(texto_extraido)
+    analisis = analizar_con_mistral(texto_extraido)
 
     return {
         "texto_extraido": texto_extraido,
