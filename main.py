@@ -6,7 +6,7 @@ import os
 
 app = FastAPI()
 
-# CORS para permitir acceso desde formularios web
+# Habilitar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,29 +36,32 @@ def analizar_con_gptneo(texto):
         }
     }
 
-    response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
-    resultado = response.json()
-
-    if isinstance(resultado, list):
-        return resultado[0]["generated_text"]
-    elif "generated_text" in resultado:
-        return resultado["generated_text"]
-    else:
-        return str(resultado)
+    try:
+        response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
+        if response.status_code != 200:
+            return f"Error en HuggingFace API (status {response.status_code}): {response.text}"
+        resultado = response.json()
+        if isinstance(resultado, list) and "generated_text" in resultado[0]:
+            return resultado[0]["generated_text"]
+        elif "generated_text" in resultado:
+            return resultado["generated_text"]
+        else:
+            return str(resultado)
+    except Exception as e:
+        return f"Error en llamada a HuggingFace: {str(e)}"
 
 @app.post("/evaluar")
 async def evaluar(file: UploadFile = File(...)):
-    ocr_response = requests.post(
-        "https://api.ocr.space/parse/image",
-        data={"apikey": OCR_API_KEY, "language": "spa"},
-        files={"file": (file.filename, await file.read(), file.content_type)},
-    )
-    resultado_ocr = ocr_response.json()
-
     try:
+        ocr_response = requests.post(
+            "https://api.ocr.space/parse/image",
+            data={"apikey": OCR_API_KEY, "language": "spa"},
+            files={"file": (file.filename, await file.read(), file.content_type)},
+        )
+        resultado_ocr = ocr_response.json()
         texto_extraido = resultado_ocr["ParsedResults"][0]["ParsedText"]
     except Exception:
-        return {"error": "No se pudo leer texto desde la imagen."}
+        return {"error": "❌ No se pudo leer texto desde la imagen."}
 
     analisis = analizar_con_gptneo(texto_extraido)
 
