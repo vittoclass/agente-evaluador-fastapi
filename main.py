@@ -32,16 +32,19 @@ def analizar_con_gptneo(texto):
         "inputs": prompt,
         "parameters": {
             "temperature": 0.7,
-            "max_new_tokens": 200
+            "max_new_tokens": 300
         }
     }
 
     response = requests.post(HUGGINGFACE_API_URL, headers=headers, json=payload)
     resultado = response.json()
+
     if isinstance(resultado, list):
         return resultado[0]["generated_text"]
+    elif "generated_text" in resultado:
+        return resultado["generated_text"]
     else:
-        return resultado
+        return str(resultado)
 
 @app.post("/evaluar")
 async def evaluar(file: UploadFile = File(...)):
