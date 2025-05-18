@@ -18,9 +18,9 @@ app.add_middleware(
 OCR_API_KEY = os.getenv("OCR_API_KEY")
 
 HUGGINGFACE_API_KEY = "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"
-HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
 
-def analizar_con_mistral(texto):
+def analizar_con_falcon(texto):
     prompt = f"Analiza esta respuesta de estudiante: '{texto}'. Evalúa si es correcta, qué habilidades demuestra, errores y sugiere retroalimentación pedagógica. Devuelve el análisis completo en español."
 
     headers = {
@@ -65,7 +65,7 @@ async def evaluar(file: UploadFile = File(...)):
     except Exception:
         return {"error": "❌ No se pudo leer texto desde la imagen."}
 
-    analisis = analizar_con_mistral(texto_extraido)
+    analisis = analizar_con_falcon(texto_extraido)
 
     return {
         "texto_extraido": texto_extraido,
